@@ -1,15 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Diagnostics;
-using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.ComponentModel;
+using System.Threading;
 
 using PIMCore;
 
@@ -19,6 +14,7 @@ namespace PIM
     {
         private PIMProject project;
         private String logName = @".\PIMCore\log.txt";
+
 
         public Form1()
         {
@@ -30,7 +26,7 @@ namespace PIM
                 File.Delete(logName);
         }
 
-        private void imagesToolStripMenuItem_Click(object sender, EventArgs e)
+        private void button1_Click(object sender, EventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog();
             ofd.Multiselect = true;
@@ -49,28 +45,23 @@ namespace PIM
                 }
 
                 toolStripStatusLabel1.Text = String.Format("Total: {0}", ofd.FileNames.Count());
-#if DEBUG
-                
-                //tabControl1.SelectedIndex = 1;
-                //button1.PerformClick();
-#endif
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void button2_Click(object sender, EventArgs e)
         {
             int selectedCount = listView1.SelectedIndices.Count;
 
             if (selectedCount >= 2)
             {
                 PIMParam param = new PIMParam();
-                param.minHessian = int.Parse(textBox1.Text);
-                param.extended = Convert.ToBoolean(int.Parse(textBox2.Text));
-                param.octave = int.Parse(textBox3.Text);
-                param.octavelayer = int.Parse(textBox4.Text);
-                param.upRight = Convert.ToBoolean(int.Parse(textBox5.Text));
-                param.rmsThres = 2.0;
-                project.setParam(param);
+                //param.minHessian = int.Parse(textBox1.Text);
+                //param.extended = Convert.ToBoolean(int.Parse(textBox2.Text));
+                //param.octave = int.Parse(textBox3.Text);
+                //param.octavelayer = int.Parse(textBox4.Text);
+                //param.upRight = Convert.ToBoolean(int.Parse(textBox5.Text));
+                //param.rmsThres = 2.0;
+                //project.setParam(param);
 
                 for (int i = 0; i < selectedCount; i++)
                     project.imgSelected[listView1.SelectedIndices[i]] = true;
@@ -82,11 +73,12 @@ namespace PIM
                 }
                 else
                 {
+                    toolStripStatusLabel1.Text = string.Empty;
                     MessageBox.Show("Matching failed!");
                 }
 
-                richTextBox1.Lines = project.log;
-                tabControl1.SelectedIndex = 2;
+                richTextMethod.Lines = project.log;
+                //tabControl1.SelectedIndex = 2;
             }
             else
             {
@@ -94,12 +86,20 @@ namespace PIM
             }
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void button3_Click(object sender, EventArgs e)
         {
             if (project.matchedImgList.Count != 0)
             {
-                if (false)
+                if (project.SRFunc()) 
                 {
+                    //★加一個警告：沒有偵測到MCR★
+                    //if (MessageBox.Show("Matlab Runtime is not detected.\nPlease install Matlab Runtime R2017b.\nDownload now?", "Warning", MessageBoxButtons.YesNo, MessageBoxIcon.Asterisk) == DialogResult.Yes)
+                    //{
+                    //    System.Diagnostics.Process.Start("https://www.mathworks.com/products/compiler/matlab-runtime.html");
+                    //}
+
+                    imageBox3.Image = project.matchedImgList.Last().GetMat();
+                    imageBox4.Image = project.HRImg.GetMat();
                     toolStripStatusLabel1.Text = "Super resolution generation is done.";
                 }
                 else
@@ -107,17 +107,29 @@ namespace PIM
             }
             else
             {
+                toolStripStatusLabel1.Text = string.Empty;
                 MessageBox.Show("No matched image!");
             }
         }
 
         private void logToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            
             if (File.Exists(logName))
                 System.Diagnostics.Process.Start(logName);
             else
                 MessageBox.Show("No log file!");
         }
+
+        private void closeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void settingOfImageMatchingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Form2 settingForm = new Form2();
+            settingForm.Show();
+        }
+
     }
 }

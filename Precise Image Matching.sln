@@ -1,14 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26730.12
+VisualStudioVersion = 15.0.27004.2008
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PIM", "PIM\PIM.csproj", "{CE857CEB-3A69-414F-830B-74D46D7BEB79}"
-	ProjectSection(ProjectDependencies) = postProject
-		{C2CEF368-F8DD-4293-ABC9-3EDE1CAF61FC} = {C2CEF368-F8DD-4293-ABC9-3EDE1CAF61FC}
-		{E933CB74-6ED3-447D-93E1-74E0C565E8E1} = {E933CB74-6ED3-447D-93E1-74E0C565E8E1}
-	EndProjectSection
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PIMCore", "PIMCore\PIMCore.csproj", "{E933CB74-6ED3-447D-93E1-74E0C565E8E1}"
 	ProjectSection(ProjectDependencies) = postProject
 		{C2CEF368-F8DD-4293-ABC9-3EDE1CAF61FC} = {C2CEF368-F8DD-4293-ABC9-3EDE1CAF61FC}
@@ -16,16 +10,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PIMCore", "PIMCore\PIMCore.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PIMCpp", "PIMCpp\PIMCpp.vcxproj", "{C2CEF368-F8DD-4293-ABC9-3EDE1CAF61FC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PIM", "PIM\PIM.csproj", "{CE857CEB-3A69-414F-830B-74D46D7BEB79}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{CE857CEB-3A69-414F-830B-74D46D7BEB79}.Debug|x64.ActiveCfg = Debug|x64
-		{CE857CEB-3A69-414F-830B-74D46D7BEB79}.Debug|x64.Build.0 = Debug|x64
-		{CE857CEB-3A69-414F-830B-74D46D7BEB79}.Release|x64.ActiveCfg = Release|x64
-		{CE857CEB-3A69-414F-830B-74D46D7BEB79}.Release|x64.Build.0 = Release|x64
 		{E933CB74-6ED3-447D-93E1-74E0C565E8E1}.Debug|x64.ActiveCfg = Debug|x64
 		{E933CB74-6ED3-447D-93E1-74E0C565E8E1}.Debug|x64.Build.0 = Debug|x64
 		{E933CB74-6ED3-447D-93E1-74E0C565E8E1}.Debug|x64.Deploy.0 = Debug|x64
@@ -35,6 +27,10 @@ Global
 		{C2CEF368-F8DD-4293-ABC9-3EDE1CAF61FC}.Debug|x64.Build.0 = Debug|x64
 		{C2CEF368-F8DD-4293-ABC9-3EDE1CAF61FC}.Release|x64.ActiveCfg = Release|x64
 		{C2CEF368-F8DD-4293-ABC9-3EDE1CAF61FC}.Release|x64.Build.0 = Release|x64
+		{CE857CEB-3A69-414F-830B-74D46D7BEB79}.Debug|x64.ActiveCfg = Debug|x64
+		{CE857CEB-3A69-414F-830B-74D46D7BEB79}.Debug|x64.Build.0 = Debug|x64
+		{CE857CEB-3A69-414F-830B-74D46D7BEB79}.Release|x64.ActiveCfg = Release|x64
+		{CE857CEB-3A69-414F-830B-74D46D7BEB79}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -47,14 +43,14 @@ Global
 		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
 		SccTeamFoundationServer = https://cyc.visualstudio.com/
 		SccLocalPath0 = .
-		SccProjectUniqueName1 = PIM\\PIM.csproj
-		SccProjectName1 = PIM
-		SccLocalPath1 = PIM
-		SccProjectUniqueName2 = PIMCore\\PIMCore.csproj
-		SccProjectName2 = PIMCore
-		SccLocalPath2 = PIMCore
-		SccProjectUniqueName3 = PIMCpp\\PIMCpp.vcxproj
-		SccProjectName3 = PIMCpp
-		SccLocalPath3 = PIMCpp
+		SccProjectUniqueName1 = PIMCore\\PIMCore.csproj
+		SccProjectName1 = PIMCore
+		SccLocalPath1 = PIMCore
+		SccProjectUniqueName2 = PIMCpp\\PIMCpp.vcxproj
+		SccProjectName2 = PIMCpp
+		SccLocalPath2 = PIMCpp
+		SccProjectUniqueName3 = PIM\\PIM.csproj
+		SccProjectName3 = PIM
+		SccLocalPath3 = PIM
 	EndGlobalSection
 EndGlobal

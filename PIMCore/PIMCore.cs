@@ -5,11 +5,18 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
+using System.Drawing.Imaging;
+
+using ImageTool;
 
 using Emgu.CV;
 using Emgu.CV.Util;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
+
+using MathWorks.MATLAB.NET.Arrays;
+using PIMMatlab;
+
 
 namespace PIMCore
 {
@@ -22,6 +29,7 @@ namespace PIMCore
         public List<bool> imgSelected;
         public Dictionary<String, PIMImage> imgDict;
         public List<PIMImage> matchedImgList;
+        public PIMImage HRImg;
         public String[] log;
 
         public PIMProject()
@@ -102,15 +110,33 @@ namespace PIMCore
             if (matchedImgList.Count == 0)
                 return false;
 
-            Mat LRMat = matchedImgList.Last().GetMat();
-            IntPtr LRPtr = LRMat.ToImage<Bgr, Byte>().Ptr;
-
-            Mat result = new Mat();
-            OutputArray resultOA = result.GetOutputArray();
+            Bitmap LRBmp = matchedImgList.Last().GetBgrBitmap();
 
             try
             {
-                //PIMCppImport.srFunc(LRPtr, 2, 1.03, 13, 1, resultOA);
+                //Matlab function
+                //function [HRIm] = SRFunc(LRIm, Factor, GuassianSigma, GuassianKernelSize, Lamda)
+
+                SRClass srClass = new SRClass();
+
+                MWNumericArray LRIm = null;
+                LRIm = new MWNumericArray(MWArrayComplexity.Real, MWNumericType.Int8, 3, LRBmp.Height, LRBmp.Width);
+                LRIm = BitmapTool.Bitmap2Array(LRBmp);
+
+                MWArray Factor = 2;
+                MWArray GuassianSigma = 1.3;
+                MWArray GuassianKernelSize = 13;
+                MWArray Lamda = 0.2;
+
+                MWArray res = srClass.SRFunc(LRIm, Factor, GuassianSigma, GuassianKernelSize, Lamda);
+
+                byte[,,] resByteArray = (byte[,,])((MWNumericArray)res).ToArray(MWArrayComponent.Real);
+
+                using (Bitmap resBmp = BitmapTool.Array2Bitmap(resByteArray, PixelFormat.Format24bppRgb))
+                {
+                    HRImg = new PIMImage(new Image<Bgr, byte>(resBmp).Mat);
+                }
+
             }
             catch
             {
@@ -142,7 +168,7 @@ namespace PIMCore
             param.octavelayer = 5;
             param.extended = true;
             param.upRight = false;
-            param.rmsThres = 2.0;
+            param.rmsThres = 3.0;
         }
 
         private void reNew()
@@ -162,14 +188,14 @@ namespace PIMCore
 
         public int width, height;
         public Bitmap bmpThumbBgr, bmpThumbGray;
-        public const int thumbSize = 200;
+        public const int thumbSize = 150;
 
         public PIMImage(String fileName)
         {
             this.fileName = fileName;
-            mat = CvInvoke.Imread(fileName, ImreadModes.Color);
-            bmpThumbBgr = utilClass.ResizeBitmap2Square(mat.ToImage<Bgr, Byte>().Resize(thumbSize, thumbSize, Inter.Area, true).ToBitmap());
-            bmpThumbGray = utilClass.ResizeBitmap2Square(mat.ToImage<Gray, Byte>().Resize(thumbSize, thumbSize, Inter.Area, true).ToBitmap());
+            mat = CvInvoke.Imread(fileName, ImreadModes.AnyColor);
+            bmpThumbBgr = utilClass.ResizeBitmap2Square(mat.ToImage<Bgr, Byte>().Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
+            bmpThumbGray = utilClass.ResizeBitmap2Square(mat.ToImage<Gray, Byte>().Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
             width = mat.Width;
             height = mat.Height;
         }
@@ -178,8 +204,8 @@ namespace PIMCore
         {
             this.fileName = String.Empty;
             this.mat = mat;
-            bmpThumbBgr = utilClass.ResizeBitmap2Square(mat.ToImage<Bgr, Byte>().Resize(thumbSize, thumbSize, Inter.Area, true).ToBitmap());
-            bmpThumbGray = utilClass.ResizeBitmap2Square(mat.ToImage<Gray, Byte>().Resize(thumbSize, thumbSize, Inter.Area, true).ToBitmap());
+            bmpThumbBgr = utilClass.ResizeBitmap2Square(mat.ToImage<Bgr, Byte>().Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
+            bmpThumbGray = utilClass.ResizeBitmap2Square(mat.ToImage<Gray, Byte>().Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
             width = mat.Width;
             height = mat.Height;
         }

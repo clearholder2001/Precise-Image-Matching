@@ -25,7 +25,8 @@
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <OutputPath>..\x64\Release\PIMCore\</OutputPath>
@@ -35,15 +36,29 @@
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Emgu.CV.UI, Version=3.2.0.2682, Culture=neutral, PublicKeyToken=7281126722ab4438, processorArchitecture=MSIL">
-      <HintPath>PIMCore\Emgu.CV.UI.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Emgu.CV.DebuggerVisualizers.VS2017, Version=3.3.0.2824, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>PIMCore\Emgu.CV.DebuggerVisualizers.VS2017.dll</HintPath>
+      <Private>False</Private>
     </Reference>
-    <Reference Include="Emgu.CV.World, Version=3.2.0.2682, Culture=neutral, PublicKeyToken=7281126722ab4438, processorArchitecture=MSIL">
+    <Reference Include="Emgu.CV.World, Version=3.3.0.2824, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>PIMCore\Emgu.CV.World.dll</HintPath>
-      <Private>True</Private>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MWArray, Version=2.17.1.0, Culture=neutral, PublicKeyToken=e1d84a0da19db86f, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>PIMCore\MWArray.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="PIMMatlab, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>PIMCore\PIMMatlab.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -56,17 +71,24 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ImageTool-basic-BHW.cs" />
     <Compile Include="PIMCore.cs" />
     <Compile Include="PIMCppImport.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="PIMCore\concrt140.dll" />
     <Content Include="PIMCore\cvextern.dll" />
+    <Content Include="PIMCore\Emgu.CV.DebuggerVisualizers.VS2017.dll" />
     <Content Include="PIMCore\Emgu.CV.UI.dll" />
     <Content Include="PIMCore\Emgu.CV.World.dll" />
+    <Content Include="PIMCore\msvcp140.dll" />
+    <Content Include="PIMCore\MWArray.dll" />
+    <Content Include="PIMCore\PIMMatlab.dll" />
+    <Content Include="PIMCore\vcruntime140.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy "$(ProjectDir)PIMCore\cvextern.dll" "$(TargetDir)"</PostBuildEvent>
+    <PostBuildEvent>copy "$(ProjectDir)PIMCore\*.dll" "$(TargetDir)"</PostBuildEvent>
   </PropertyGroup>
 </Project>

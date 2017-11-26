@@ -1,68 +1,20 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <streambuf>
-#include <msclr/marshal.h>
-#include <msclr/marshal_cppstd.h>
+/// -----------------------------------------------
+/// 作者：蔡易澄、陳俋臣
+/// 修改日期：2017/11/20
+/// 內容：影像匹配核心與操作函式(使用OpenCV)
+/// -----------------------------------------------
 
-#include "opencv2/core.hpp"
-#include "opencv2/imgproc.hpp"
-#include "opencv2/features2d.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/calib3d.hpp"
-#include "opencv2/xfeatures2d.hpp"
-#include "opencv2/reg/mapaffine.hpp"
-#include "opencv2/reg/mapshift.hpp"
-#include "opencv2/reg/mapprojec.hpp"
-#include "opencv2/reg/mappergradshift.hpp"
-#include "opencv2/reg/mappergradeuclid.hpp"
-#include "opencv2/reg/mappergradsimilar.hpp"
-#include "opencv2/reg/mappergradaffine.hpp"
-#include "opencv2/reg/mappergradproj.hpp"
-#include "opencv2/reg/mapperpyramid.hpp"
 
-#include "PIMCppFunc.h"
+#include "PIMCppCore.h"
 
-using namespace cv;
-using namespace cv::xfeatures2d;
-using namespace cv::reg;
-using namespace std;
-using namespace System;
-using namespace System::IO;
+
+template<typename T>
+inline void vecRelease(vector<T> & v) {
+	vector<T> t;
+	v.swap(t);
+}
 
 #pragma region "蔡易澄's codes using OpenCV"
-static class imageproc
-{
-public:
-	Mat readfile(wstring, double, double, int &);
-	Mat findfeature(int, int, int, bool, bool, Mat, vector<KeyPoint> &, Mat &, int &);
-	Mat homoresult(Mat, Mat, vector<KeyPoint>, vector<KeyPoint>, Mat, Mat, double, vector<DMatch> &, Mat &, int &);
-	Mat homoresultnoRANSAC(Mat, Mat, vector<KeyPoint>, vector<KeyPoint>, Mat, Mat, double, vector<DMatch> &, Mat &, int &);
-	Mat mapperresult(Mat, Mat, Mat, Mat &, int &);
-	Mat jointimage(Mat, Mat, Mat, Mat, int &, bool);
-	Mat colordifferent(Mat, Mat, Mat, Mat, double, double, int &);
-	vector<Point2f> mat2point(Mat, int &);
-	vector<Point2f> tranpoint(vector<Point2f>, Mat, int &);
-	void mixpoint(vector<vector<Point2f>> &, vector<Point2f>, vector<Mat> &, Mat, int &);
-	Mat point2mat(vector<vector<Point2f>>, vector<Mat>, int &);
-	double homoRMS(Mat, Mat, Mat, int &, double);
-	double mapperRMS(Mat, Mat, Mat, Mat, int &, double);
-	vector<Mat> readallfile(vector<wstring>, vector<int> &);
-	vector<Mat> findallfeature(int, int, int, bool, bool, vector<Mat>, vector<vector<KeyPoint>> &, vector<Mat> &, vector<int> &);
-	vector<Mat> homoallresult(vector<Mat>, vector<vector<KeyPoint>>, vector<Mat>, double, vector<vector<DMatch>> &, vector<Mat> &, vector<double> &, double, vector<double> &, vector<int> &, vector<int> &, int &);
-	vector<Mat> homoallresultnoRANSAC(vector<Mat>, vector<vector<KeyPoint>>, vector<Mat>, double, vector<vector<DMatch>> &, vector<Mat> &, vector<double> &, double, vector<double> &, vector<int> &, vector<int> &, int &);
-	vector<Mat> mapperallresult(vector<Mat>, vector<Mat>, vector<Mat> &, vector<double> &, vector<double>, vector<int> &, vector<int> &);
-	//會有錯位問題，勿用
-	Mat jointallimage(vector<Mat>, vector<Mat>, vector<double>, vector<Mat>, vector<double>, vector<int> &, vector<int> &, int &);
-	Mat jointallimageback(vector<Mat>, vector<Mat>, vector<double>, vector<Mat>, vector<double>, vector<int> &, vector<int> &, int &);
-	vector<Mat> allcolordifferent(vector<Mat>, vector<Mat>, vector<double>, vector<Mat>, vector<double>, vector<int> &);
-};
-
-
 Mat imageproc::findfeature(int minhessian, int Octave, int Octavelayer, bool extend, bool USURF, Mat img, vector<KeyPoint> &keypoint, Mat &descriptor, int &warning)
 {
 	if (minhessian < 0 || minhessian>3000)
@@ -100,7 +52,10 @@ Mat imageproc::findfeature(int minhessian, int Octave, int Octavelayer, bool ext
 
 	detector->detectAndCompute(img, Mat(), keypoint, descriptor, false);
 
-	cout << keypoint.size() << endl;
+
+	/*log修正*/
+	/*cout << "----------find the feature point-----------" << endl;
+	cout << ""<<keypoint.size() << endl;*/
 
 	/*double des = 0;
 	for (int i = 0; i < descriptor.rows; i++)
@@ -156,8 +111,9 @@ Mat imageproc::homoresult(Mat img1, Mat img2, vector<KeyPoint> keypoint1, vector
 
 
 	matcher.knnMatch(descriptor1, descriptor2, matches, 1);
-
 	match1.resize(matches.size());
+
+#pragma omp parallel for
 	for (int i = 0; i < matches.size(); i++)
 	{
 		match1[i] = matches[i][0];
@@ -166,14 +122,18 @@ Mat imageproc::homoresult(Mat img1, Mat img2, vector<KeyPoint> keypoint1, vector
 
 	double min_dist = 100;
 	double max_dist = 0;
+
+#pragma omp parallel for
 	for (int i = 0; i < descriptor1.rows; i++)
 	{
 		double dist = match1[i].distance;
 		if (dist < min_dist) min_dist = dist;
 		if (dist > max_dist) max_dist = dist;
 	}
-	cout << match1.size() << endl;
-	cout << max_dist - min_dist << endl;
+
+	/*log修正*/
+	//cout << match1.size() << endl;
+	//cout << max_dist - min_dist << endl;
 
 
 	vector<DMatch> good_match;
@@ -184,7 +144,11 @@ Mat imageproc::homoresult(Mat img1, Mat img2, vector<KeyPoint> keypoint1, vector
 			good_match.push_back(match1[i]);
 		}
 	}
-	cout << "multipleSIZE:	" << good_match.size() << endl;
+
+	/*log修正*/
+	//cout << "multipleSIZE:	" << good_match.size() << endl;
+
+
 	if (good_match.size() < 8)
 	{
 		warning = 7;
@@ -203,7 +167,24 @@ Mat imageproc::homoresult(Mat img1, Mat img2, vector<KeyPoint> keypoint1, vector
 	double a = 3;
 
 	homotran = findHomography(point2, point1, CV_RANSAC, a, mask, 2000, 0.9999);
-	cout << homotran << endl;
+
+	/*log修正*/
+	cout << "Homography Matrix:" << endl;
+	cout << scientific;
+	cout.precision(3);
+	for (int m = 0; m < 3; m++)
+	{
+		for (int n = 0; n < 3; n++)
+		{
+			cout << scientific << homotran.at<double>(m, n);
+			if (n < 2)
+			{
+				cout << ", ";
+			}
+		}
+		cout << endl;
+	}
+	cout << defaultfloat;
 	homomatch.clear();
 
 
@@ -299,8 +280,8 @@ Mat imageproc::homoresultnoRANSAC(Mat img1, Mat img2, vector<KeyPoint> keypoint1
 		if (dist < min_dist) min_dist = dist;
 		if (dist > max_dist) max_dist = dist;
 	}
-	cout << match1.size() << endl;
-	cout << max_dist - min_dist << endl;
+	//cout << match1.size() << endl;
+	//cout << max_dist - min_dist << endl;
 
 
 	vector<DMatch> good_match;
@@ -311,7 +292,7 @@ Mat imageproc::homoresultnoRANSAC(Mat img1, Mat img2, vector<KeyPoint> keypoint1
 			good_match.push_back(match1[i]);
 		}
 	}
-	cout << "multipleSIZE:	" << good_match.size() << endl;
+	//cout << "multipleSIZE:	" << good_match.size() << endl;
 	if (good_match.size() < 8)
 	{
 		warning = 7;
@@ -334,7 +315,24 @@ Mat imageproc::homoresultnoRANSAC(Mat img1, Mat img2, vector<KeyPoint> keypoint1
 	double a = 3;
 
 	homotran = findHomography(point2, point1, 0, a, mask, 2000, 0.9999);
-	cout << homotran << endl;
+	
+	/*log修正*/
+	cout << "Homography Matrix:" << endl;
+	cout << scientific;
+	cout.precision(3);
+	for (int m = 0; m < 3; m++)
+	{
+		for (int n = 0; n < 3; n++)
+		{
+			cout << scientific << homotran.at<double>(m, n);
+			if (n < 2)
+			{
+				cout << ", ";
+			}
+		}
+		cout << endl;
+	}
+	cout << defaultfloat;
 	homomatch.clear();
 
 
@@ -604,6 +602,11 @@ Mat imageproc::mapperresult(Mat image1, Mat image2, Mat homotran, Mat &mapperhom
 	Mat sp1(maxy - miny + 1, maxx - minx + 1, CV_8UC3);
 	Mat	sp2(maxy - miny + 1, maxx - minx + 1, CV_8UC3);
 
+	//imshow("image1", image1);
+	//imshow("imghomo", imghomotran);
+
+	//waitKey(0);
+
 	for (int i = 0; i < sp1.rows; i++)
 		for (int j = 0; j < sp1.cols; j++)
 		{
@@ -611,15 +614,24 @@ Mat imageproc::mapperresult(Mat image1, Mat image2, Mat homotran, Mat &mapperhom
 			sp2.at<Vec3b>(i, j) = imghomotran.at<Vec3b>(miny + i, minx + j);
 		}
 
-	sp1.convertTo(sp1, CV_64FC3);
-	sp2.convertTo(sp2, CV_64FC3);
+	//imshow("sp1", sp1);
+	//imshow("sp2", sp2);
+
+	//waitKey(0);
+
+	//sp1.convertTo(sp1, CV_64FC3);
+	//sp2.convertTo(sp2, CV_64FC3);
 
 	Ptr<MapperGradProj> mapper = makePtr<MapperGradProj>();
-	MapperPyramid mappPyr(mapper);
-	Ptr<Map> mapPtr = mappPyr.calculate(sp1, sp2);
+	Ptr<Map> mapPtr;
+	mapPtr = mapper->calculate(sp1, sp2, mapPtr);
+	
+	//原始寫法
+	//MapperPyramid mappPyr(mapper);
+	//Ptr<Map> mapPtr = mappPyr.calculate(sp1, sp2);
 
 	Ptr<MapProjec> mapProj = MapTypeCaster::toProjec(mapPtr);
-
+	
 	mapProj->normalize();
 
 	Mat(mapProj->getProjTr()).copyTo(mapperhomo);
@@ -886,7 +898,7 @@ double imageproc::homoRMS(Mat image1, Mat image2, Mat homotran, int &warning, do
 	RMS = RMS / p1.size();
 	RMS = pow(RMS, 0.5);
 
-	cout << "RMS:		" << RMS << endl;
+	cout << "RMS: " << RMS << endl;
 
 	return RMS;
 }
@@ -1294,10 +1306,22 @@ vector<Mat> imageproc::findallfeature(int hessian, int Octave, int Octavelayer, 
 		detectrank[i] = allfeature.findfeature(hessian, Octave, Octavelayer, extend, USURF, imagerank[i], keypointrank[i], descriptorrank[i], warning[i]);
 	}
 
+
+	/*log修正*/
+	cout << "---SURF Matching Start---" << endl;
+
+	for (int i = 0; i < keypointrank.size(); i++)
+	{
+		cout << "Image #" << i + 1 << " : " << keypointrank[i].size() << " keypoints" << endl;
+	}
+
+
+
+
 	return detectrank;
 }
 
-vector<Mat> imageproc::homoallresult(vector<Mat> imagerank, vector<vector<KeyPoint>>keypointrank, vector<Mat> descriptorrank, double initialmultiple, vector<vector<DMatch>> &homomatchrank, vector<Mat> &homotranrank, vector<double> &homoRMSrank, double RMSthreshold, vector<double> &multiplerank, vector<int> &homowarning, vector<int> &RMSwarning, int &warning)
+vector<Mat> imageproc::homoallresult(vector<Mat> imagerank, vector<vector<KeyPoint>>keypointrank, vector<Mat> descriptorrank, double initialmultiple, vector<vector<DMatch>> &homomatchrank, vector<Mat> &homotranrank, vector<double> &homoRMSrank,	double RMSthreshold, vector<double> &multiplerank, vector<int> &homowarning, vector<int> &RMSwarning, int &warning)
 {
 
 	vector<Mat> imgmatchrank;
@@ -1318,6 +1342,10 @@ vector<Mat> imageproc::homoallresult(vector<Mat> imagerank, vector<vector<KeyPoi
 	}
 	warning = 0;
 	imageproc allhomo;
+
+	/*log修正*/
+
+
 
 	for (int i = 0; i < imgmatchrank.size(); i++)
 	{
@@ -1343,7 +1371,9 @@ vector<Mat> imageproc::homoallresult(vector<Mat> imagerank, vector<vector<KeyPoi
 			int RMSwarningtemp;
 			imgmatchtemp = allhomo.homoresult(imagerank[i + 1], imagerank[i], keypointrank[i + 1], keypointrank[i], descriptorrank[i + 1], descriptorrank[i],
 				multiple, homomatchtemp, homotrantemp, homowarningtemp);
-			cout << "homomatchsize:	" << homomatchtemp.size() << endl;
+
+			/*log修正*/
+			cout << "Matched points of Image #" << i + 1 << " and Image #" << i + 2 << " : " << homomatchtemp.size() << endl;
 
 			if (!homotrantemp.data)
 			{
@@ -1364,6 +1394,11 @@ vector<Mat> imageproc::homoallresult(vector<Mat> imagerank, vector<vector<KeyPoi
 				multiplerank[i] = multiple;
 				if (homoRMSrank[i] <= RMSthreshold)
 				{
+					/*log修正*/
+					cout << "RMS <= Threshold" << endl;
+					cout << "---SURF Matching End---" << endl;
+					cout << endl << endl;
+
 					break;
 				}
 			}
@@ -1375,6 +1410,13 @@ vector<Mat> imageproc::homoallresult(vector<Mat> imagerank, vector<vector<KeyPoi
 				break;
 			}
 			times++;
+
+			/*log修正*/
+			cout << "RMS > Threshold" << endl;
+			cout << "---SURF Matching Again---" << endl;
+			cout << endl << endl;
+
+
 		}
 
 	}
@@ -1382,7 +1424,7 @@ vector<Mat> imageproc::homoallresult(vector<Mat> imagerank, vector<vector<KeyPoi
 
 }
 
-vector<Mat> imageproc::homoallresultnoRANSAC(vector<Mat> imagerank, vector<vector<KeyPoint>>keypointrank, vector<Mat> descriptorrank, double initialmultiple, vector<vector<DMatch>> &homomatchrank, vector<Mat> &homotranrank, vector<double> &homoRMSrank, double RMSthreshold, vector<double> &multiplerank, vector<int> &homowarning, vector<int> &RMSwarning, int &warning)
+vector<Mat> imageproc::homoallresultnoRANSAC(vector<Mat> imagerank, vector<vector<KeyPoint>>keypointrank, vector<Mat> descriptorrank, double initialmultiple, vector<vector<DMatch>> &homomatchrank, vector<Mat> &homotranrank, vector<double> &homoRMSrank,	double RMSthreshold, vector<double> &multiplerank, vector<int> &homowarning, vector<int> &RMSwarning, int &warning)
 {
 
 	vector<Mat> imgmatchrank;
@@ -1426,6 +1468,10 @@ vector<Mat> imageproc::homoallresultnoRANSAC(vector<Mat> imagerank, vector<vecto
 		imgmatchtemp = allhomo.homoresultnoRANSAC(imagerank[i + 1], imagerank[i], keypointrank[i + 1], keypointrank[i], descriptorrank[i + 1], descriptorrank[i],
 			multiple, homomatchtemp, homotrantemp, homowarningtemp);
 
+		/*log修正*/
+		cout << "Matched points of Image #" << i + 1 << " and Image #" << i + 2 << " : " << homomatchtemp.size() << endl;
+		cout << "---SURF Matching End---" << endl;
+		cout << endl << endl;
 
 		homomatchrank[i] = homomatchtemp;
 		homotranrank[i] = homotrantemp.clone();
@@ -1449,11 +1495,13 @@ vector<Mat> imageproc::mapperallresult(vector<Mat> imagerank, vector<Mat> homotr
 
 	imageproc allmapper;
 
+	cout << "Mapper RMS: " << endl;
 	for (int i = 0; i < homotranrank.size(); i++)
 	{
 		mapperresultrank[i] = allmapper.mapperresult(imagerank[i + 1], imagerank[i], homotranrank[i], mappertranrank[i], mapperwarning[i]);
 		mapperRMS[i] = allmapper.mapperRMS(imagerank[i + 1], imagerank[i], homotranrank[i], mappertranrank[i], RMSwarning[i], multiplerank[i]);
-		cout << i + 1 << i + 2 << "mapperRMS:		" << mapperRMS[i] << endl;
+
+		cout << "Image #" << i + 1 << " and Image #" << i + 2 << " : " << mapperRMS[i] << endl;
 	}
 
 	return mapperresultrank;
@@ -1540,7 +1588,7 @@ Mat imageproc::jointallimageback(vector<Mat> imagerank, vector<Mat> homotranrank
 {
 	vector<vector<Point2d>> pointrank;
 	pointrank.resize(imagerank.size());
-	vector<vector<vector<int>>> pointvaluerank;
+	vector<vector<vector<byte>>> pointvaluerank;
 	pointvaluerank.resize(imagerank.size());
 	vector<vector<Point2d>> fourpointrank;
 	fourpointrank.resize(imagerank.size());
@@ -1596,6 +1644,7 @@ Mat imageproc::jointallimageback(vector<Mat> imagerank, vector<Mat> homotranrank
 				down = (int)(fourpointrank[layer][i].y + 0.5);
 		}
 
+
 		limitnumber[layer].push_back(left);
 		limitnumber[layer].push_back(right);
 		limitnumber[layer].push_back(up);
@@ -1610,6 +1659,7 @@ Mat imageproc::jointallimageback(vector<Mat> imagerank, vector<Mat> homotranrank
 			vector<Point2d> invertran;
 			invertran.resize(pointrank[layer].size());
 
+#pragma omp parallel for
 			for (int i = 0; i < pointrank[layer].size(); i++)
 			{
 				pointrank[layer][i].x = i % (right - left + 1) + left;
@@ -1623,6 +1673,7 @@ Mat imageproc::jointallimageback(vector<Mat> imagerank, vector<Mat> homotranrank
 				perspectiveTransform(invertran, invertran, inverserank[inverserank.size() - i - 1]);
 			}
 
+#pragma omp parallel for
 			for (int i = 0; i < pointvaluerank[layer].size(); i++)
 			{
 				pointvaluerank[layer][i].resize(3);
@@ -1654,8 +1705,9 @@ Mat imageproc::jointallimageback(vector<Mat> imagerank, vector<Mat> homotranrank
 						pointvaluerank[layer][i][k] = (dis1 / totaldis)*valueup[k] + (dis2 / totaldis)*valuedown[k];
 					}
 
-
-
+					vecRelease(value);
+					vecRelease(valueup);
+					vecRelease(valuedown);
 				}
 				else
 				{
@@ -1665,8 +1717,10 @@ Mat imageproc::jointallimageback(vector<Mat> imagerank, vector<Mat> homotranrank
 				}
 			}
 		}
-
 	}
+
+	vecRelease(inverserank);
+	vecRelease(fourpointrank);
 
 	int left = limitnumber[0][0];
 	int right = limitnumber[0][0];
@@ -1688,14 +1742,18 @@ Mat imageproc::jointallimageback(vector<Mat> imagerank, vector<Mat> homotranrank
 		}
 	}
 
+	vecRelease(limitnumber);
+
 	Mat allimagejoint(down - up + 1, right - left + 1, CV_8UC3);
-	vector<vector<vector<int>>> imagejoint;
+	vector<vector<vector<byte>>> imagejoint;
 	imagejoint.resize((right - left + 1)*(down - up + 1));
+	int imgNum = imagerank.size();
+#pragma omp parallel for
 	for (int i = 0; i < imagejoint.size(); i++)
 	{
 		imagejoint[i].resize(3);
+		imagejoint[i][0].reserve(imgNum);
 	}
-
 
 	for (int i = 0; i < pointrank.size() - 1; i++)
 	{
@@ -1710,6 +1768,10 @@ Mat imageproc::jointallimageback(vector<Mat> imagerank, vector<Mat> homotranrank
 				imagejoint[pointrank[i][j].x - left + (pointrank[i][j].y - up)*(right - left + 1)][2].push_back(pointvaluerank[i][j][2]);
 		}
 	}
+
+	vecRelease(pointvaluerank);
+	vecRelease(pointrank);
+
 	for (int i = 0; i < imagerank[imagerank.size() - 1].rows; i++)
 	{
 		for (int j = 0; j < imagerank[imagerank.size() - 1].cols; j++)
@@ -1718,10 +1780,11 @@ Mat imageproc::jointallimageback(vector<Mat> imagerank, vector<Mat> homotranrank
 			imagejoint[j - left + (i - up)*(right - left + 1)][1].push_back(imagerank[imagerank.size() - 1].at<Vec3b>(i, j)[1]);
 			imagejoint[j - left + (i - up)*(right - left + 1)][2].push_back(imagerank[imagerank.size() - 1].at<Vec3b>(i, j)[2]);
 		}
-
 	}
 
+	vecRelease(imagerank);
 
+#pragma omp parallel for
 	for (int i = 0; i < allimagejoint.rows; i++)
 		for (int j = 0; j < allimagejoint.cols; j++)
 		{
@@ -1755,777 +1818,12 @@ Mat imageproc::jointallimageback(vector<Mat> imagerank, vector<Mat> homotranrank
 			allimagejoint.at<Vec3b>(i, j)[0] = value[0];
 			allimagejoint.at<Vec3b>(i, j)[1] = value[1];
 			allimagejoint.at<Vec3b>(i, j)[2] = value[2];
+
+			vecRelease(value);
 		}
 
-	/*vector<vector<vector<int>>> imagejointt;
-	imagejointt.resize((right - left + 1)*(down - up + 1));
-	for (int i = 0; i < imagejointt.size(); i++)
-	{
-	imagejointt[i].resize(3);
-	}
-
-
-	for (int i = 0; i < imagerank[imagerank.size() - 1].rows; i++)
-	{
-	for (int j = 0; j < imagerank[imagerank.size() - 1].cols; j++)
-	{
-	imagejointt[j - left + (i - up)*(right - left + 1)][0].push_back(imagerank[imagerank.size() - 1].at<Vec3b>(i, j)[0]);
-	imagejointt[j - left + (i - up)*(right - left + 1)][1].push_back(imagerank[imagerank.size() - 1].at<Vec3b>(i, j)[1]);
-	imagejointt[j - left + (i - up)*(right - left + 1)][2].push_back(imagerank[imagerank.size() - 1].at<Vec3b>(i, j)[2]);
-	}
-
-	}
-	Mat allimagejointt(down - up + 1, right - left + 1, CV_8UC3);
-	for (int i = 0; i<allimagejointt.rows; i++)
-	for (int j = 0; j < allimagejointt.cols; j++)
-	{
-	int count = 0;
-	vector<double> value;
-	value.resize(3);
-	value[0] = 0;
-	value[1] = 0;
-	value[2] = 0;
-
-	for (int k = 0; k < imagejointt[i*allimagejointt.cols + j][0].size(); k++)
-	{
-	value[0] = value[0] + imagejointt[i*allimagejointt.cols + j][0][k];
-	count++;
-	}
-	value[0] = value[0] / count;
-	count = 0;
-	for (int k = 0; k < imagejointt[i*allimagejointt.cols + j][1].size(); k++)
-	{
-	value[1] = value[1] + imagejointt[i*allimagejointt.cols + j][1][k];
-	count++;
-	}
-	value[1] = value[1] / count;
-	count = 0;
-	for (int k = 0; k < imagejointt[i*allimagejointt.cols + j][2].size(); k++)
-	{
-	value[2] = value[2] + imagejointt[i*allimagejointt.cols + j][2][k];
-	count++;
-	}
-	value[2] = value[2] / count;
-	allimagejointt.at<Vec3b>(i, j)[0] = value[0];
-	allimagejointt.at<Vec3b>(i, j)[1] = value[1];
-	allimagejointt.at<Vec3b>(i, j)[2] = value[2];
-	}
-	for (int i = 0; i < 50000; i++)
-	{
-	imshow("ttt", allimagejoint);
-	waitKey(200);
-	imshow("ttt", allimagejointt);
-	waitKey(200);
-
-	}*/
-
+	vecRelease(imagejoint);
 
 	return allimagejoint;
-
-
-}
-
-
-//int main()
-//{
-//	vector<string> filename;
-//
-//	//*****編輯此處，修改輸入資料路徑******
-//	/*filename.push_back(".\\test data\\bigimage1.tif");
-//	filename.push_back(".\\test data\\bigimage2.tif");
-//	filename.push_back(".\\test data\\bigimage3.tif");*/
-//	/*filename.push_back(".\\test data\\split4.tif");
-//	filename.push_back(".\\test data\\split5.tif");*/
-//
-//	filename.push_back(".\\test data\\orisplitimage1.tif");
-//	filename.push_back(".\\test data\\orisplitimage2.tif");
-//	filename.push_back(".\\test data\\orisplitimage3.tif");
-//	/*filename.push_back(".\\test data\\orisplitimage4.tif");
-//	filename.push_back(".\\test data\\orisplitimage5.tif");*/
-//
-//
-//
-//	//*****編輯此處，修改輸入資料路徑******
-//
-//	imageproc ttt;
-//
-//	vector<Mat> imagerank;
-//	vector<int> readwarning;
-//	//輸入影像檔，!!重要!!影像順序第一張輸入之影像，會在成果之最底層，同理類推
-//	imagerank = ttt.readallfile(filename, readwarning);
-//
-//	//非關鍵程式碼，在C++目的為因程式回傳錯誤資訊，用以中斷程式
-//	for (int i = 0; i < readwarning.size(); i++)
-//	{
-//		if (readwarning[i] != 0)
-//		{
-//			cout << "讀取影像發生錯誤，以下為錯誤編碼:" << endl;
-//			for (int j = 0; j < readwarning.size(); j++)
-//			{
-//				cout << readwarning[j] << endl;
-//			}
-//			system("pause");
-//			exit(0);
-//		}
-//
-//	}
-//
-//	for (int i = 0; i < imagerank.size(); i++)
-//	{
-//
-//		imshow("第" + to_string(i + 1) + "張影像", imagerank[i]);
-//	}
-//
-//
-//	//waitKey(0);
-//	vector<vector<KeyPoint>> keypointrank;
-//	vector<Mat> descriptorrank;
-//
-//	int hessian = 300;
-//	int Octave = 5;
-//	int Octavelayer = 5;
-//	bool extend = true;
-//	bool USURF = false;
-//
-//	vector<Mat> detectrank;
-//	vector<int> detectwarning;
-//
-//	//進行影像序列偵測特徵點
-//	detectrank = ttt.findallfeatur(hessian, Octave, Octavelayer, extend, USURF, imagerank, keypointrank, descriptorrank, detectwarning);
-//
-//	//非關鍵程式碼，在C++目的為因程式回傳錯誤資訊，用以中斷程式
-//	for (int i = 0; i < detectwarning.size(); i++)
-//	{
-//		if (detectwarning[i] != 0)
-//		{
-//			cout << "SURF偵測有誤，以下為錯誤編碼:" << endl;
-//			for (int j = 0; j < detectwarning.size(); j++)
-//			{
-//				cout << detectwarning[j] << endl;
-//			}
-//			system("pause");
-//			exit(0);
-//		}
-//
-//	}
-//
-//	for (int i = 0; i < detectrank.size(); i++)
-//	{
-//
-//		imshow("第" + to_string(i + 1) + "張影像detect", detectrank[i]);
-//	}
-//
-//
-//	//waitKey(0);
-//
-//
-//	vector<Mat> imgmatchrank;
-//	double initialmultiple = 5;
-//	vector<vector<DMatch>> homomatchrank;
-//	vector<Mat> homotranrank;
-//	vector<double> homoRMSrank;
-//	vector<double> multiplerank;
-//	vector<int> homowarning;
-//	vector<int> homoRMSwarning;
-//	int homoallresultwarning;
-//	double RMSthreshold = 3;
-//
-//	//進行相鄰影像轉換矩陣計算
-//	/*imgmatchrank = ttt.homoallresult(imagerank, keypointrank, descriptorrank, initialmultiple, homomatchrank, homotranrank, homoRMSrank, RMSthreshold,
-//	multiplerank, homowarning, homoRMSwarning, homoallresultwarning);*/
-//
-//	imgmatchrank = ttt.homoallresult(imagerank, keypointrank, descriptorrank, initialmultiple, homomatchrank, homotranrank, homoRMSrank, RMSthreshold,
-//		multiplerank, homowarning, homoRMSwarning, homoallresultwarning);
-//
-//	/*for (int i = 0; i < imgmatchrank.size(); i++)
-//	{
-//	imshow("第" + to_string(i + 1) + to_string(i + 2) + "張影像imgmatch", imgmatchrank[i]);
-//	}
-//
-//	waitKey(0);*/
-//
-//	//非關鍵程式碼，在C++目的為因程式回傳錯誤資訊，用以中斷程式
-//	if (homoallresultwarning != 0)
-//	{
-//		cout << "homoallresult設定有誤，以下為錯誤編碼:" << endl;
-//		cout << homoallresultwarning << endl;
-//		system("pause");
-//		exit(0);
-//	}
-//	for (int i = 0; i < homowarning.size(); i++)
-//	{
-//		if (homowarning[i] != 0)
-//		{
-//			cout << "homo轉換有誤，以下為錯誤編碼:" << endl;
-//			for (int j = 0; j < homowarning.size(); j++)
-//			{
-//				cout << homowarning[j] << endl;
-//			}
-//			system("pause");
-//			exit(0);
-//		}
-//
-//	}
-//	for (int i = 0; i < homowarning.size(); i++)
-//	{
-//		if (homowarning[i] != 0)
-//		{
-//			cout << "homoRMS計算有誤，以下為錯誤編碼:" << endl;
-//			for (int j = 0; j < homowarning.size(); j++)
-//			{
-//				cout << homowarning[j] << endl;
-//			}
-//			system("pause");
-//			exit(0);
-//		}
-//
-//	}
-//
-//	for (int i = 0; i < imgmatchrank.size(); i++)
-//	{
-//		imshow("第" + to_string(i + 1) + to_string(i + 2) + "張影像imgmatch", imgmatchrank[i]);
-//	}
-//
-//	//waitKey(0);
-//
-//
-//	vector<Mat> mapperresultrank;
-//	vector<Mat> mappertranrank;
-//	vector<double> mapperRMSrank;
-//	vector<int> mapperwarning;
-//	vector<int> mapperRMSwarning;
-//
-//	//進行相鄰影像mapper運算獲得二次轉換矩陣
-//	mapperresultrank = ttt.mapperallresult(imagerank, homotranrank, mappertranrank, mapperRMSrank, multiplerank, mapperwarning, mapperRMSwarning);
-//
-//
-//	//非關鍵程式碼，在C++目的為因程式回傳錯誤資訊，用以中斷程式
-//	for (int i = 0; i < mapperwarning.size(); i++)
-//	{
-//		if (mapperwarning[i] != 0)
-//		{
-//			cout << "mapper轉換有誤，以下為錯誤編碼:" << endl;
-//			for (int j = 0; j < mapperwarning.size(); j++)
-//			{
-//				cout << mapperwarning[j] << endl;
-//			}
-//			system("pause");
-//			exit(0);
-//		}
-//
-//	}
-//	for (int i = 0; i < mapperRMSwarning.size(); i++)
-//	{
-//		if (mapperRMSwarning[i] != 0)
-//		{
-//			cout << "mapperRMS計算有誤，以下為錯誤編碼:" << endl;
-//			for (int j = 0; j < mapperRMSwarning.size(); j++)
-//			{
-//				cout << mapperRMSwarning[j] << endl;
-//			}
-//			system("pause");
-//			exit(0);
-//		}
-//
-//	}
-//
-//	for (int i = 0; i < mapperresultrank.size(); i++)
-//	{
-//
-//		imshow("第" + to_string(i + 1) + to_string(i + 2) + "張影像mapper", mapperresultrank[i]);
-//	}
-//
-//	//waitKey(0);
-//
-//	/*fstream input1;
-//	input1.open("./test data/matchpoint23.txt");
-//
-//	vector<Point2d> check1;
-//	vector<Point2d> check2;
-//
-//
-//
-//	for (int i = 0; i < 35; i++)
-//	{
-//	string x;
-//	Point2d ttt;
-//	getline(input1, x, ',');
-//	ttt.x = atof(x.c_str());
-//	getline(input1, x, '	');
-//	ttt.y = atof(x.c_str());
-//	check1.push_back(ttt);
-//
-//	getline(input1, x, ',');
-//	ttt.x = atof(x.c_str());
-//	getline(input1, x, '\n');
-//	ttt.y = atof(x.c_str());
-//	check2.push_back(ttt);
-//	}*/
-//
-//	/*vector<Point2d> backcheck1;
-//	vector<Point2d> backcheck2;
-//
-//	backcheck1.resize(check1.size());
-//	backcheck2.resize(check1.size());
-//	double m = 2;
-//	double pi = 3.1415926;
-//	double degree1 = 3.00152 * pi / 180;
-//	double degree2 = 3.00152 * pi / 180;
-//
-//
-//
-//	for (int i = 0; i < check1.size(); i++)
-//	{
-//	backcheck1[i].x = 2 * cos(-degree1)*(check1[i].x + 2500 * cos(degree1) + 2500 * sin(degree1)) + 2 * sin(-degree1)*(check1[i].y + 2500 * cos(degree1) - 2500 * sin(degree1));
-//	backcheck1[i].y = -2 * sin(-degree1)*(check1[i].x + 2500 * cos(degree1) + 2500 * sin(degree1)) + 2 * cos(-degree1)*(check1[i].y + 2500 * cos(degree1) - 2500 * sin(degree1));
-//
-//	backcheck2[i].x = 2 * cos(-degree2)*(check2[i].x + 2900 * cos(degree2) + 2500 * sin(degree2)) + 2 * sin(-degree2)*(check2[i].y + 2500 * cos(degree2) - 2900 * sin(degree2));
-//	backcheck2[i].y = -2 * sin(-degree2)*(check2[i].x + 2900 * cos(degree2) + 2500 * sin(degree2)) + 2 * cos(-degree2)*(check2[i].y + 2500 * cos(degree2) - 2900 * sin(degree2));
-//
-//
-//
-//	}
-//	*/
-//	//fstream file;
-//	//file.open("./test data/doublechange.txt", ios::out);
-//
-//	///*for (int i = 0; i < backcheck1.size(); i++)
-//	//{
-//	//	file << setw(15) << setprecision(15) << backcheck1[i].x << "," << setw(15) << setprecision(15) << backcheck1[i].y << "	" << setw(15) << setprecision(15) << backcheck2[i].x << "," << setw(15) << setprecision(15) << backcheck2[i].y << endl;
-//	//}*/
-//
-//	//Mat inverse;
-//	//invert(homotranrank[0], inverse, DECOMP_LU);
-//
-//	//perspectiveTransform(check1, check1, homotranrank[0]);
-//	///*perspectiveTransform(check1, check1, homotranrank[1]);
-//	//perspectiveTransform(check1, check1, homotranrank[2]);
-//	//perspectiveTransform(check1, check1, homotranrank[3]);
-//
-//	//perspectiveTransform(check2, check2, homotranrank[1]);
-//	//perspectiveTransform(check2, check2, homotranrank[2]);
-//	//perspectiveTransform(check2, check2, homotranrank[3]);*/
-//
-//	///*vector<KeyPoint> testcheck1;
-//	//vector<KeyPoint> testcheck2;
-//
-//	//for (int i = 0; i < check1.size(); i++)
-//	//{
-//	//	KeyPoint ttt;
-//	//	ttt.pt.x = check1[i].x;
-//	//	ttt.pt.y = check1[i].y;
-//	//	testcheck1.push_back(ttt);
-//
-//	//	ttt.pt.x = check2[i].x;
-//	//	ttt.pt.y = check2[i].y;
-//	//	testcheck2.push_back(ttt);
-//	//}
-//
-//	//Mat detect1;
-//	//Mat detect2;
-//	//drawKeypoints(imagerank[1], testcheck1, detect1, Scalar(100, 150, 0, 0));
-//	//drawKeypoints(imagerank[1], testcheck2, detect2, Scalar(100, 150, 0, 0));
-//
-//	//warpPerspective(imagerank[0], detect1, homotranrank[0], detect1.size());
-//	//warpPerspective(detect1, detect1, homotranrank[0], detect1.size());
-//	//warpPerspective(imagerank[1], imagerank[1], homotranrank[0], detect1.size());
-//
-//	//for (int i = 0; i < 50000; i++)
-//	//{
-//	//	imshow("001", detect1);
-//	//	waitKey(200);
-//	//	imshow("001", imagerank[1]);
-//	//	waitKey(200);
-//	//}*/
-//
-//
-//
-//
-//	//vector<int> globalornot;
-//	//globalornot.resize(check1.size());
-//
-//	//vector<double> errornumber;
-//	//errornumber.resize(check1.size());
-//	//vector<double> onetime;
-//	//onetime.resize(check1.size());
-//
-//
-//	//double averageerror = 0;
-//	//for (int i = 0; i < check1.size(); i++)
-//	//{
-//	//	double oncetime = 0;
-//	//	onetime[i] = pow(pow(check1[i].x - check2[i].x, 2) + pow(check1[i].y - check2[i].y, 2), 0.5);
-//	//	averageerror = averageerror + onetime[i];
-//	//	if (check1[i].x - check2[i].x > 0)
-//	//	{
-//	//		if (check1[i].y - check2[i].y > 0)
-//	//		{
-//	//			globalornot[i] = 1;
-//	//		}
-//	//		else
-//	//		{
-//	//			globalornot[i] = 2;
-//	//		}
-//	//	}
-//	//	else
-//	//	{
-//	//		if (check1[i].y - check2[i].y > 0)
-//	//		{
-//	//			globalornot[i] = 3;
-//	//		}
-//	//		else
-//	//		{
-//	//			globalornot[i] = 4;
-//	//		}
-//	//	}
-//
-//
-//
-//	//}
-//
-//	//averageerror = averageerror / check1.size();
-//
-//
-//	//cout << averageerror << endl;
-//
-//
-//
-//	//waitKey(0);
-//
-//	//Mat jointimage;
-//	//vector<Mat> tranimage;
-//	//tranimage.resize(imagerank.size());
-//
-//	//for (int i = 0; i < imagerank.size()-1; i++)
-//	//{
-//	//	tranimage[i] = imagerank[i].clone();
-//	//	for (int j = i; j < imagerank.size()-1; j++)
-//	//	{
-//	//		warpPerspective(tranimage[i], tranimage[i], homotranrank[j], imagerank[imagerank.size()-1].size(),INTER_LINEAR+CV_WARP_FILL_OUTLIERS,BORDER_CONSTANT);
-//	//	}
-//	//	Mat transition;
-//	//	transition = tranimage[i].clone();
-//	//	for (int m = 0; m < tranimage[i].rows; m++)
-//	//		for (int n = 0; n < tranimage[i].cols; n++)
-//	//		{
-//	//			if (tranimage[i].at<Vec3b>(m, n)[0] == 0 || tranimage[i].at<Vec3b>(m, n)[1] == 0 || tranimage[i].at<Vec3b>(m, n)[2] == 0)
-//	//			{
-//	//				if (m < tranimage[i].rows - 1 && m>0 && n < tranimage[i].cols - 1 && n>0)
-//	//				{
-//	//					for (int g = -1; g < 2; g++)for (int h = -1; h < 2; h++)
-//	//					{
-//	//						transition.at<Vec3b>(m + g, n + h)[0] = 0;
-//	//						transition.at<Vec3b>(m + g, n + h)[1] = 0;
-//	//						transition.at<Vec3b>(m + g, n + h)[2] = 0;
-//	//					}
-//	//				}
-//	//			}
-//	//		}
-//	//	tranimage[i] = transition.clone();
-//
-//
-//	//}
-//	//tranimage[imagerank.size() - 1] = imagerank[imagerank.size() - 1].clone();
-//
-//	//for (int i = 0; i < tranimage.size(); i++)
-//	//{
-//
-//	//	imshow("第" + to_string(i + 1) + to_string(i + 2) + "張影像", tranimage[i]);
-//	//}
-//
-//	//waitKey(0);
-//
-//
-//	//jointimage = tranimage[tranimage.size() - 1].clone();
-//
-//	//for (int i = 0; i < tranimage[tranimage.size()-1].rows; i++)
-//	//	for (int j = 0; j < tranimage[tranimage.size() - 1].cols; j++)
-//	//	{
-//	//		int count = 0;
-//	//		vector<double> valuerank;
-//	//		valuerank.resize(3);
-//	//		valuerank[0] = 0;
-//	//		valuerank[1] = 0;
-//	//		valuerank[2] = 0;
-//	//		for (int m = 0; m < tranimage.size(); m++)
-//	//		{
-//	//			if (tranimage[m].at<Vec3b>(i, j)[0] == 0 || tranimage[m].at<Vec3b>(i, j)[1] == 0 || tranimage[m].at<Vec3b>(i, j)[2] == 0 )
-//	//			{
-//	//				continue;
-//	//			}
-//	//			//if(tranimage[m].rows<i&&tranimage[m].cols)
-//	//			count++;
-//	//			valuerank[0] = valuerank[0] + tranimage[m].at<Vec3b>(i, j)[0];
-//	//			valuerank[1] = valuerank[1] + tranimage[m].at<Vec3b>(i, j)[1];
-//	//			valuerank[2] = valuerank[2] + tranimage[m].at<Vec3b>(i, j)[2];
-//	//		}
-//	//		if (count > 0)
-//	//		{
-//	//			jointimage.at<Vec3b>(i, j)[0] = (int)(valuerank[0] / count + 0.5);
-//	//			jointimage.at<Vec3b>(i, j)[1] = (int)(valuerank[1] / count + 0.5);
-//	//			jointimage.at<Vec3b>(i, j)[2] = (int)(valuerank[2] / count + 0.5);
-//	//		}
-//
-//	//	}
-//	//
-//	//	
-//	//imshow("jointimage", jointimage);
-//	//imwrite("jointimage.tif", jointimage);
-//
-//	//waitKey(0);
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//	Mat allimagejoint;
-//	vector<int> imagewarning;
-//	vector<int> tranwarning;
-//	int jointwarning;
-//
-//
-//	//輸入影像序列，獲得影像序列對位成果，先輸入之影像在下層 後輸入影像在上層
-//
-//	allimagejoint = ttt.jointallimageback(imagerank, homotranrank, homoRMSrank, mappertranrank, mapperRMSrank, imagewarning, tranwarning, jointwarning);
-//
-//
-//	//非關鍵程式碼，在C++目的為因程式回傳錯誤資訊，用以中斷程式
-//	for (int i = 0; i < imagewarning.size(); i++)
-//	{
-//		if (imagewarning[i] != 0)
-//		{
-//			cout << "影像轉點資料有誤，以下為錯誤編碼:" << endl;
-//			for (int j = 0; j < imagewarning.size(); j++)
-//			{
-//				cout << imagewarning[j] << endl;
-//			}
-//			system("pause");
-//			exit(0);
-//		}
-//
-//	}
-//	for (int i = 0; i < tranwarning.size(); i++)
-//	{
-//		if (tranwarning[i] != 0)
-//		{
-//			cout << "點資料進行homo轉換有誤，以下為錯誤編碼:" << endl;
-//			for (int j = 0; j < tranwarning.size(); j++)
-//			{
-//				cout << tranwarning[j] << endl;
-//			}
-//			system("pause");
-//			exit(0);
-//		}
-//
-//	}
-//
-//	if (jointwarning != 0)
-//	{
-//		cout << "jointimage有誤，以下為錯誤編碼:" << endl;
-//		cout << jointwarning << endl;
-//		system("pause");
-//		exit(0);
-//	}
-//
-//	imshow("allimagejoint", allimagejoint);
-//	//waitKey(0);
-//
-//	imwrite("./test data/allimagejoint.tif", allimagejoint);
-//
-//	vector<Mat> colorrank;
-//	vector<int> colorwarning;
-//
-//	//輸出影像序列相鄰影像之融合圖，B色階與GR色階分別為兩張不同之影像
-//	//colorrank = ttt.allcolordifferent(imagerank, homotranrank, homoRMSrank, mappertranrank, mapperRMSrank, colorwarning);
-//
-//
-//	//非關鍵程式碼，在C++目的為因程式回傳錯誤資訊，用以中斷程式
-//	for (int i = 0; i < colorwarning.size(); i++)
-//	{
-//		if (colorwarning[i] != 0)
-//		{
-//			cout << "點資料進行homo轉換有誤，以下為錯誤編碼:" << endl;
-//			for (int j = 0; j < colorwarning.size(); j++)
-//			{
-//				cout << colorwarning[j] << endl;
-//			}
-//			system("pause");
-//			exit(0);
-//		}
-//
-//	}
-//
-//	for (int i = 0; i < colorrank.size(); i++)
-//	{
-//
-//		imshow("第" + to_string(i + 1) + to_string(i + 2) + "張影像colordifferent", colorrank[i]);
-//
-//		imwrite("./test data/color" + to_string(i + 1) + to_string(i + 2) + ".tif", colorrank[i]);
-//	}
-//
-//
-//	waitKey(0);
-//	return 0;
-//}
-
-#pragma endregion
-
-#pragma region "other functions"
-bool saveVectorOfMat(vector<Mat> matSeq, string tarDir)
-{
-	string ext = ".tif";
-
-	if (matSeq.empty())
-		return false;
-
-	for (int i = 0; i < matSeq.size(); i++)
-	{
-		imwrite(tarDir + "\\" + to_string(i + 1) + ext, matSeq[i]);
-	}
-	return true;
-}
-
-System::String^ str2Str(string str)
-{
-	return gcnew System::String(str.c_str());
-}
-
-int errorCheck(vector<int> errorMsg)
-{
-	//非關鍵程式碼，在C++目的為因程式回傳錯誤資訊，用以中斷程式
-	for (int i = 0; i < errorMsg.size(); i++)
-	{
-		if (errorMsg[i] != 0)
-			return errorMsg[i];
-	}
-	return 0;
 }
 #pragma endregion
-
-
-bool matchFunc(char* fileName_c, int minHessian, int octave, int octaveLayer, bool extended, bool upRight, double rmsThres, OutputArray result)
-{
-	string logName = ".\\PIMCore\\log.txt";
-	string fileName = ".\\PIMCore\\" + string(fileName_c);
-
-
-	string resDir = ".\\Result";
-	string resSubDir1 = resDir + "\\1. Input Image";
-	string resSubDir2 = resDir + "\\2. Detected Feature";
-	string resSubDir3 = resDir + "\\3. Homography";
-	string resSubDir4 = resDir + "\\4. Mapper";
-	string resSubDir5 = resDir + "\\5. Joint Image";
-
-	if (Directory::Exists(str2Str(resDir)))
-		Directory::Delete(str2Str(resDir), true);
-
-	Directory::CreateDirectory(str2Str(resDir));
-	Directory::CreateDirectory(str2Str(resSubDir1));
-	Directory::CreateDirectory(str2Str(resSubDir2));
-	Directory::CreateDirectory(str2Str(resSubDir3));
-	Directory::CreateDirectory(str2Str(resSubDir4));
-	Directory::CreateDirectory(str2Str(resSubDir5));
-
-
-	StreamReader^ sr = gcnew StreamReader(str2Str(fileName));
-	System::String^ strLine;
-	vector<wstring> fileSeq;
-	while (strLine = sr->ReadLine())
-	{
-		fileSeq.push_back(msclr::interop::marshal_as<wstring>(strLine));
-	}
-	sr->Close();
-
-
-	//Output cout to file
-	ofstream out(logName);
-	streambuf *coutbuf = cout.rdbuf();
-	cout.rdbuf(out.rdbuf());
-
-
-	imageproc ful;
-
-	vector<Mat> imgSeq;
-	vector<int> readwarning;
-
-	//---1---
-	//輸入影像檔，!!重要!!影像順序第一張輸入之影像，會在成果之最底層，同理類推
-	imgSeq = ful.readallfile(fileSeq, readwarning);
-	if (errorCheck(readwarning))
-		return false;
-	else
-		saveVectorOfMat(imgSeq, resSubDir1);
-
-	vector<vector<KeyPoint>> keypointrank;
-	vector<Mat> descriptorrank;
-
-	vector<Mat> detectrank;
-	vector<int> detectwarning;
-
-	//---2---
-	//進行影像序列偵測特徵點
-	detectrank = ful.findallfeature(minHessian, octave, octaveLayer, extended, upRight, imgSeq, keypointrank, descriptorrank, detectwarning);
-	if (errorCheck(detectwarning))
-		return false;
-	else
-		saveVectorOfMat(detectrank, resSubDir2);
-
-	vector<Mat> imgmatchrank;
-	double initialmultiple = 5;
-	vector<vector<DMatch>> homomatchrank;
-	vector<Mat> homoTranSeq;
-	vector<double> homoRmsSeq;
-	vector<double> multiplerank;
-	vector<int> homowarning;
-	vector<int> homoRMSwarning;
-	int homoallresultwarning;
-
-	//---3---
-	//進行相鄰影像轉換矩陣計算
-	imgmatchrank = ful.homoallresult(imgSeq, keypointrank, descriptorrank, initialmultiple, homomatchrank, homoTranSeq, homoRmsSeq, rmsThres, multiplerank, homowarning, homoRMSwarning, homoallresultwarning);
-	if (errorCheck(homowarning) + errorCheck(homoRMSwarning) + homoallresultwarning)
-		return false;
-	else
-		saveVectorOfMat(imgmatchrank, resSubDir3);
-
-	vector<Mat> mapperresultrank;
-	vector<Mat> mapperTranSeq;
-	vector<double> mapperRmsSeq;
-	vector<int> mapperwarning;
-	vector<int> mapperRMSwarning;
-
-	//---4---
-	//進行相鄰影像mapper運算獲得二次轉換矩陣
-	mapperresultrank = ful.mapperallresult(imgSeq, homoTranSeq, mapperTranSeq, mapperRmsSeq, multiplerank, mapperwarning, mapperRMSwarning);
-	if (errorCheck(mapperwarning) + errorCheck(mapperRMSwarning))
-		return false;
-	else
-		saveVectorOfMat(mapperresultrank, resSubDir4);
-
-	Mat allimagejoint;
-	vector<int> imagewarning;
-	vector<int> tranwarning;
-	int jointwarning;
-	vector<Mat> vecOfAllimagejoint;
-
-	//輸入影像序列，獲得影像序列對位成果，先輸入之影像在下層 後輸入影像在上層
-	allimagejoint = ful.jointallimageback(imgSeq, homoTranSeq, homoRmsSeq, mapperTranSeq, mapperRmsSeq, imagewarning, tranwarning, jointwarning);
-	vecOfAllimagejoint.push_back(allimagejoint);
-	if (errorCheck(imagewarning) + errorCheck(tranwarning) + jointwarning)
-		return false;
-	else
-		saveVectorOfMat(vecOfAllimagejoint, resSubDir5);
-
-	allimagejoint.copyTo(result);
-
-	return true;
-}

@@ -1,16 +1,22 @@
-﻿using System;
+﻿/// -----------------------------------------------
+/// 作者：陳俋臣
+/// 修改日期：2017/11/20
+/// 內容：專案類別宣告、主程式核心、引用Matlab DLL
+/// -----------------------------------------------
+
+
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 
 using ImageTool;
 
 using Emgu.CV;
-using Emgu.CV.Util;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 
@@ -23,12 +29,19 @@ namespace PIMCore
     public class PIMProject
     {
         private PIMParam param;
+        private Stopwatch sw;
+        private PIMClass srClass;
 
+        public bool mcrInitStatus;
+        public double processTime;
         public int imgCount;
         public List<String> imgPathList;
         public List<bool> imgSelected;
         public Dictionary<String, PIMImage> imgDict;
-        public List<PIMImage> matchedImgList;
+        public List<PIMImage> descriptorImgList;
+        public List<PIMImage> homographyImgList;
+        public List<PIMImage> mapperImgList;
+        public List<PIMImage> jointImgList;
         public PIMImage HRImg;
         public String[] log;
 
@@ -37,7 +50,10 @@ namespace PIMCore
             imgPathList = new List<String>();
             imgSelected = new List<bool>();
             imgDict = new Dictionary<String, PIMImage>();
-            matchedImgList = new List<PIMImage>();
+            descriptorImgList = new List<PIMImage>();
+            homographyImgList = new List<PIMImage>();
+            mapperImgList = new List<PIMImage>();
+            jointImgList = new List<PIMImage>();
             resetParam();
         }
 
@@ -87,7 +103,13 @@ namespace PIMCore
             Mat result = new Mat();
             OutputArray resultOA = result.GetOutputArray();
 
-            bool success = PIMCppImport.matchFunc(swName, param.minHessian, param.octave, param.octavelayer, param.extended, param.upRight, param.rmsThres, resultOA);
+            processTime = 0.0;
+            sw = Stopwatch.StartNew();
+
+            bool success = PIMCppImport.matchFunc(swName, param.minHessian, param.octave, param.octavelayer, param.extended, param.upRight, param.rmsThres, param.enableRANSAC, resultOA);
+
+            sw.Stop();
+            processTime = (double)sw.ElapsedMilliseconds / 1000;
 
             for (int i = 0; i < imgCount; i++)
                 imgSelected[i] = false;
@@ -96,7 +118,7 @@ namespace PIMCore
 
             if (success && resultOA != OutputArray.GetEmpty())
             {
-                matchedImgList.Add(new PIMImage(resultOA.GetMat()));
+                jointImgList.Add(new PIMImage(resultOA.GetMat(), String.Format("{0:00}", jointImgList.Count + 1)));
                 return true;
             }
             else
@@ -105,38 +127,79 @@ namespace PIMCore
             }
         }
 
-        public bool SRFunc()
+        public bool loadMatchingResult(String path)
         {
-            if (matchedImgList.Count == 0)
+            try
+            {
+                if (Directory.Exists(path + "\\1. Input Image")
+                 && Directory.Exists(path + "\\2. Detected Feature")
+                 && Directory.Exists(path + "\\3. Homography")
+                 && Directory.Exists(path + "\\4. Mapper")
+                 && Directory.Exists(path + "\\5. Joint Image"))
+                {
+                    descriptorImgList.Clear();
+                    homographyImgList.Clear();
+                    mapperImgList.Clear();
+
+                    foreach (string fileName in Directory.GetFiles(path + "\\2. Detected Feature"))
+                        descriptorImgList.Add(new PIMImage(fileName));
+
+                    foreach (string fileName in Directory.GetFiles(path + "\\3. Homography"))
+                        homographyImgList.Add(new PIMImage(fileName));
+
+                    foreach (string fileName in Directory.GetFiles(path + "\\4. Mapper"))
+                        mapperImgList.Add(new PIMImage(fileName));
+                }
+                else
+                    return false;
+            }
+            catch (Exception)
+            {
                 return false;
+            }
 
-            Bitmap LRBmp = matchedImgList.Last().GetBgrBitmap();
+            return true;
+        }
 
+        public bool srFunc(Bitmap LRBmp)
+        {
             try
             {
                 //Matlab function
                 //function [HRIm] = SRFunc(LRIm, Factor, GuassianSigma, GuassianKernelSize, Lamda)
 
-                SRClass srClass = new SRClass();
+                if (mcrInitStatus == false)
+                {
+                    if (!initMCR())
+                    {
+                        return false;
+                    }
+                }
 
                 MWNumericArray LRIm = null;
-                LRIm = new MWNumericArray(MWArrayComplexity.Real, MWNumericType.Int8, 3, LRBmp.Height, LRBmp.Width);
+                LRIm = new MWNumericArray(MWArrayComplexity.Real, MWNumericType.UInt8, 3, LRBmp.Width, LRBmp.Height);
                 LRIm = BitmapTool.Bitmap2Array(LRBmp);
 
-                MWArray Factor = 2;
-                MWArray GuassianSigma = 1.3;
-                MWArray GuassianKernelSize = 13;
-                MWArray Lamda = 0.2;
+                MWArray Factor = param.Factor;
+                MWArray GuassianSigma = param.GuassianSigma;
+                MWArray GuassianKernelSize = param.GuassianKernelSize;
+                MWArray Lamda = param.Lamda;
+
+
+                processTime = 0.0;
+                sw = Stopwatch.StartNew();
 
                 MWArray res = srClass.SRFunc(LRIm, Factor, GuassianSigma, GuassianKernelSize, Lamda);
+
+                sw.Stop();
+                processTime = (double)sw.ElapsedMilliseconds / 1000;
 
                 byte[,,] resByteArray = (byte[,,])((MWNumericArray)res).ToArray(MWArrayComponent.Real);
 
                 using (Bitmap resBmp = BitmapTool.Array2Bitmap(resByteArray, PixelFormat.Format24bppRgb))
                 {
-                    HRImg = new PIMImage(new Image<Bgr, byte>(resBmp).Mat);
+                    HRImg = new PIMImage(new Image<Bgr, byte>(resBmp).Mat, "SRResult");
                 }
-
             }
             catch
             {
@@ -146,19 +209,30 @@ namespace PIMCore
             return true;
         }
 
-        public Mat GetMatByInd(int index)
-        {
-            if (index < imgPathList.Count && index >= 0 && imgDict.ContainsKey(imgPathList[index]))
-            {
-                return imgDict[imgPathList[index]].GetMat();
-            }
-
-            return null;
-        }
-
         public void setParam(PIMParam param)
         {
             this.param = param;
+        }
+
+        public PIMParam getParam()
+        {
+            return param;
+        }
+
+        public bool initMCR()
+        {
+            try
+            {
+                srClass = new PIMClass();
+            }
+            catch (Exception)
+            {
+                mcrInitStatus = false;
+                return false;
+            }
+
+            mcrInitStatus = true;
+            return true;
         }
 
         private void resetParam()
@@ -169,6 +243,12 @@ namespace PIMCore
             param.extended = true;
             param.upRight = false;
             param.rmsThres = 3.0;
+            param.enableRANSAC = true;
+
+            param.Factor = 2;
+            param.GuassianSigma = 1.3;
+            param.GuassianKernelSize = 13;
+            param.Lamda = 0.05;
         }
 
         private void reNew()
@@ -177,8 +257,11 @@ namespace PIMCore
             imgPathList.Clear();
             imgSelected.Clear();
             imgDict.Clear();
-        }
 
+            descriptorImgList.Clear();
+            homographyImgList.Clear();
+            mapperImgList.Clear();
+        }
     }
 
     public class PIMImage
@@ -193,27 +276,39 @@ namespace PIMCore
         public PIMImage(String fileName)
         {
             this.fileName = fileName;
-            mat = CvInvoke.Imread(fileName, ImreadModes.AnyColor);
-            bmpThumbBgr = utilClass.ResizeBitmap2Square(mat.ToImage<Bgr, Byte>().Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
-            bmpThumbGray = utilClass.ResizeBitmap2Square(mat.ToImage<Gray, Byte>().Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
+            mat = new Mat(fileName, ImreadModes.AnyColor);
             width = mat.Width;
             height = mat.Height;
+
+            using (Image<Bgr, Byte> img = mat.ToImage<Bgr, Byte>())
+                bmpThumbBgr = utilClass.ResizeBitmap2Square(img.Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
+            using (Image<Gray, Byte> img = mat.ToImage<Gray, Byte>())
+                bmpThumbGray = utilClass.ResizeBitmap2Square(img.Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
+
         }
 
-        public PIMImage(Mat mat)
+        public PIMImage(Mat mat, string stringIndex)
         {
             this.fileName = String.Empty;
             this.mat = mat;
-            bmpThumbBgr = utilClass.ResizeBitmap2Square(mat.ToImage<Bgr, Byte>().Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
-            bmpThumbGray = utilClass.ResizeBitmap2Square(mat.ToImage<Gray, Byte>().Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
             width = mat.Width;
             height = mat.Height;
+
+            using (Image<Bgr, Byte> img = mat.ToImage<Bgr, Byte>())
+                bmpThumbBgr = utilClass.ResizeBitmap2Square(img.Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
+            using (Image<Gray, Byte> img = mat.ToImage<Gray, Byte>())
+                bmpThumbGray = utilClass.ResizeBitmap2Square(img.Resize(thumbSize, thumbSize, Inter.Linear, true).ToBitmap());
+
+            fileName = stringIndex;
         }
 
-        public Mat GetMat() { return mat; }
-        public Bitmap GetBgrBitmap() { return mat.ToImage<Bgr, Byte>().Bitmap; }
-        public Bitmap GetGrayBitmap() { return mat.ToImage<Gray, Byte>().Bitmap; }
+        public Mat GetMat() { return mat.Clone(); }
 
+        public String GetFileName() { return fileName; }
+
+        public Image<Bgr, Byte> GetBgrImage() { return new Image<Bgr, Byte>(mat.Bitmap); }
+
+        public Image<Gray, Byte> GetGrayImage() { return new Image<Gray, Byte>(mat.Bitmap); }
     }
 
     public struct PIMParam
@@ -224,6 +319,12 @@ namespace PIMCore
         public bool extended;
         public bool upRight;
         public double rmsThres;
+        public bool enableRANSAC;
+
+        public double Factor;
+        public double GuassianSigma;
+        public int GuassianKernelSize;
+        public double Lamda;
     }
 
     public class utilClass

@@ -1,15 +1,16 @@
-﻿/// <summary>
-/// 本版本的陣列維度為[height, width, band]
+﻿/// -----------------------------------------------
+/// 作者：陳俋臣
+/// 修改日期：2017/11/20
+/// 內容：Bitmap與Array格式快速轉換
+/// -----------------------------------------------
+/// 本版本的陣列維度為[band, height, width]
+/// 彩色影像band順序：Bitmap為BGR、Array為RGB
 /// 使用前須先設定專案能容許unsafe操作
-/// 專案－＞屬性－＞建置－＞選取 "容許Unsafe程式碼" 
-/// 修改日期：2015/12/17
-/// </summary>
+/// 專案 -> 屬性 -> 建置 -> 啟用 "容許Unsafe程式碼" 
+/// -----------------------------------------------
 
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Drawing;
 using System.Drawing.Imaging;
 
@@ -45,7 +46,7 @@ namespace ImageTool
                         {
                             for (int k = 0; k < LayerNumber; k++)
                             {
-                                imgData[k, j, i] = *(imgPtr + k);
+                                imgData[(LayerNumber - 1) - k, j, i] = *(imgPtr + k);
                             }
                             imgPtr += LayerNumber;
                         }
@@ -138,7 +139,7 @@ namespace ImageTool
                     {
                         for (int k = 0; k < LayerNumber; k++)
                         {
-                            *(imgPtr + k) = imgData[k, j, i];
+                            *(imgPtr + k) = imgData[(LayerNumber - 1) - k, j, i];
                         }
                         imgPtr += LayerNumber;
                     }

@@ -29,22 +29,18 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <DebugSymbols>true</DebugSymbols>
     <OutputPath>..\x64\Release\PIMCore\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Emgu.CV.DebuggerVisualizers.VS2017, Version=3.3.0.2824, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>PIMCore\Emgu.CV.DebuggerVisualizers.VS2017.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Emgu.CV.World, Version=3.3.0.2824, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>PIMCore\Emgu.CV.World.dll</HintPath>
@@ -52,7 +48,7 @@
     </Reference>
     <Reference Include="MWArray, Version=2.17.1.0, Culture=neutral, PublicKeyToken=e1d84a0da19db86f, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>PIMCore\MWArray.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\..\Program Files\MATLAB\R2017b\toolbox\dotnetbuilder\bin\win64\v4.0\MWArray.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PIMMatlab, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -77,18 +73,13 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="PIMCore\concrt140.dll" />
     <Content Include="PIMCore\cvextern.dll" />
-    <Content Include="PIMCore\Emgu.CV.DebuggerVisualizers.VS2017.dll" />
     <Content Include="PIMCore\Emgu.CV.UI.dll" />
     <Content Include="PIMCore\Emgu.CV.World.dll" />
-    <Content Include="PIMCore\msvcp140.dll" />
-    <Content Include="PIMCore\MWArray.dll" />
     <Content Include="PIMCore\PIMMatlab.dll" />
-    <Content Include="PIMCore\vcruntime140.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy "$(ProjectDir)PIMCore\*.dll" "$(TargetDir)"</PostBuildEvent>
+    <PostBuildEvent>xcopy "$(ProjectDir)PIMCore\*.dll" "$(TargetDir)" /s /y</PostBuildEvent>
   </PropertyGroup>
 </Project>

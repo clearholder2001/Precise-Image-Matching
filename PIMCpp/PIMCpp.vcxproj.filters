@@ -15,12 +15,18 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="PIMCppFunc.cpp">
+    <ClCompile Include="PIMCppCore.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
+    <ClCompile Include="PIMCppExport.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="PIMCppFunc.h">
+    <ClInclude Include="PIMCppCore.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="PIMCppExport.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

@@ -70,6 +70,7 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;PIMCPP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.\OpenCV\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -91,6 +92,7 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;PIMCPP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.\OpenCV\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -109,10 +111,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="PIMCppFunc.cpp" />
+    <ClCompile Include="PIMCppCore.cpp" />
+    <ClCompile Include="PIMCppExport.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="PIMCppFunc.h" />
+    <ClInclude Include="PIMCppCore.h" />
+    <ClInclude Include="PIMCppExport.h" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System">

@@ -1,6 +1,7 @@
 # Precise-Image-Matching
-*Study on Precise Image Matching and Registration*  
-National Cheng Kung University, Department of Geomatics & National Space Organization
+Study on Precise Image Matching and Registration  
+*National Cheng Kung University, Taiwan*  
+*National Space Organization, Taiwan*  
 
 # Purpose
 Implementation of Ground-based TDI and Super Resolution Algorithm, GUI Design, and Code Integration
